@@ -1,0 +1,25 @@
+.env
+
+/node_modules
+/dist
+/.vscode
+.DS_Store
+npm-debug.log
+yarn-error.log
+.idea
+.vscode
+*.log
+coverage
+*.tsbuildinfo
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/build
+/public/build
+/public/hot
+/public/mix-manifest.json
+/storage/*.key  # Ignore all storage files
+/storage/debugbar/*                         # Ignore all debugbar files
+/storage/framework/cache/data/*            # Ignore all cache files 
