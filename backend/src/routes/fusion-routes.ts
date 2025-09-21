@@ -114,8 +114,72 @@ router.post('/swap/execute', async (req, res) => {
   }
 });
 
-// Test swap from Base to Polygon (you have Base funds)
-router.post('/swap/test-base-to-polygon', async (req, res) => {
+// Official documented route: Ethereum USDT -> Solana USDT
+router.post('/swap/test-eth-to-solana', async (req, res) => {
+  try {
+    const { amount, solanaReceiver } = req.body;
+    
+    if (!solanaReceiver) {
+      return res.status(400).json({
+        success: false,
+        error: 'solanaReceiver (Solana wallet address) is required'
+      });
+    }
+
+    const result = await fusionService.executeSwap({
+      srcChainId: 1, // Ethereum
+      dstChainId: 900, // Solana  
+      srcTokenAddress: '0xdac17f958d2ee523a2206206994597c13d831ec7', // ETH USDT
+      dstTokenAddress: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // SOL USDT
+      amount: amount || '5000000', // 5 USDT default
+      walletAddress: process.env.TEST_MAKER_ADDRESS!,
+      receiverAddress: solanaReceiver,
+      preset: 'fast'
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Ethereum USDT to Solana USDT swap executed (official documented route)'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Official route test failed'
+    });
+  }
+});
+
+// Test quote for official documented route
+router.post('/quote/test-eth-to-solana', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    
+    const quote = await fusionService.getQuote({
+      srcChainId: 1, // Ethereum
+      dstChainId: 900, // Solana
+      srcTokenAddress: '0xdac17f958d2ee523a2206206994597c13d831ec7', // ETH USDT
+      dstTokenAddress: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // SOL USDT
+      amount: amount || '5000000', // 5 USDT default
+      walletAddress: process.env.TEST_MAKER_ADDRESS!
+    });
+
+    res.json({
+      success: true,
+      data: quote,
+      message: 'Official documented route quote successful',
+      route: 'Ethereum USDT -> Solana USDT'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Official route quote failed'
+    });
+  }
+});
+
+// Legacy routes (kept for backward compatibility but using safer amounts)
+router.post('/swap/test-base-eth-to-polygon', async (req, res) => {
   try {
     const { amount } = req.body;
     
@@ -124,7 +188,7 @@ router.post('/swap/test-base-to-polygon', async (req, res) => {
       dstChainId: 137, // Polygon
       srcTokenAddress: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // Base ETH
       dstTokenAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // Polygon USDC
-      amount: amount || '10000000000000000', // 0.01 ETH default
+      amount: amount || '5000000000000000', // ~$5 worth
       walletAddress: process.env.TEST_MAKER_ADDRESS!,
       receiverAddress: process.env.TEST_RECEIVER_ADDRESS!,
       preset: 'fast'
@@ -133,41 +197,12 @@ router.post('/swap/test-base-to-polygon', async (req, res) => {
     res.json({
       success: true,
       data: result,
-      message: 'Base to Polygon swap executed'
+      message: 'Base ETH to Polygon USDC swap executed'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Test swap failed'
-    });
-  }
-});
-
-// Test swap from Arbitrum to Base (you have Arbitrum funds)
-router.post('/swap/test-arbitrum-to-base', async (req, res) => {
-  try {
-    const { amount } = req.body;
-    
-    const result = await fusionService.executeSwap({
-      srcChainId: 42161, // Arbitrum
-      dstChainId: 8453, // Base
-      srcTokenAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum USDC
-      dstTokenAddress: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // Base ETH
-      amount: amount || '1000000', // 1 USDC default
-      walletAddress: process.env.TEST_MAKER_ADDRESS!,
-      receiverAddress: process.env.TEST_RECEIVER_ADDRESS!,
-      preset: 'fast'
-    });
-
-    res.json({
-      success: true,
-      data: result,
-      message: 'Arbitrum to Base swap executed'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Test swap failed'
+      error: error instanceof Error ? error.message : 'Legacy route test failed'
     });
   }
 });
@@ -201,28 +236,42 @@ router.get('/orders/active', async (req, res) => {
   }
 });
 
-// Quick quote test with your tokens
-router.post('/quote/quick-test', async (req, res) => {
+// Check supported routes and tokens
+router.get('/supported-routes', async (req, res) => {
   try {
-    // Test Base ETH to Polygon USDC quote
-    const quote = await fusionService.getQuote({
-      srcChainId: 8453,
-      dstChainId: 137,
-      srcTokenAddress: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-      dstTokenAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
-      amount: '10000000000000000',
-      walletAddress: process.env.TEST_MAKER_ADDRESS!
-    });
+    const routes = [
+      {
+        name: 'Official Documented Route',
+        description: 'Ethereum USDT to Solana USDT',
+        srcChain: { id: 1, name: 'Ethereum' },
+        dstChain: { id: 900, name: 'Solana' },
+        srcToken: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+        dstToken: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+        status: 'Fully Supported',
+        minimumAmount: '5000000' // 5 USDT
+      },
+      {
+        name: 'Base to Polygon',
+        description: 'Base ETH to Polygon USDC',
+        srcChain: { id: 8453, name: 'Base' },
+        dstChain: { id: 137, name: 'Polygon' },
+        srcToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+        dstToken: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+        status: 'Experimental',
+        minimumAmount: '5000000000000000' // ~$5 ETH
+      }
+    ];
 
     res.json({
       success: true,
-      data: quote,
-      message: 'Quick test quote successful'
+      data: routes,
+      message: 'Supported cross-chain routes',
+      recommendation: 'Use the official documented route (Ethereum -> Solana) for best results'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Quick test failed'
+      error: error instanceof Error ? error.message : 'Failed to get supported routes'
     });
   }
 });
