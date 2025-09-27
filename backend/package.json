@@ -13,6 +13,8 @@
   "dependencies": {
     "@1inch/byte-utils": "^3.1.0",
     "@1inch/cross-chain-sdk": "^1.0.2",
+    "@coral-xyz/anchor": "^0.30.0",
+    "@solana/web3.js": "^1.95.0",
     "dotenv": "^16.6.1",
     "ethers": "^6.15.0",
     "viem": "^2.37.7"
